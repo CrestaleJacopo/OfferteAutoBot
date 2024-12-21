@@ -2,10 +2,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
-import java.sql.Connection;
+import java.sql.*;
 
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.HashMap;
 
 public class WebScraperDB
@@ -15,11 +13,11 @@ public class WebScraperDB
     private Connection connection;
 
     public WebScraperDB(String db_url) throws SQLException{
-//        try {
-//            connection = DriverManager.getConnection(db_url);
-//        } catch (SQLException e) {
-//            throw new SQLException();
-//        }
+        try {
+            connection = DriverManager.getConnection(db_url, "root", "");
+        } catch (SQLException e) {
+            throw new SQLException();
+        }
     }
 
     public void autoscout() {
@@ -30,28 +28,35 @@ public class WebScraperDB
                 Elements articles = doc.select("article");
 //                System.out.println("url = " + (url + i)); //DEBUG
                 if(articles.isEmpty()) {
-                    System.out.println("FINITO"+i);
+                    System.err.println("FINE "+(i-1));
                     break;
                 }
                 for(var article : articles) {
-                        // marca, modello, prezzo, km, anno, provincia, carburante, cambio, (potenza)
-                    String marca = article.attr("data-make").toLowerCase();
-                    String modello = article.attr("data-model").toLowerCase();
-                    Integer prezzo = Integer.parseInt(article.attr("data-price"));
-                    String link = "autoscout24.it" +
-                            article.select("div[class=\"ListItem_header__J6xlG ListItem_header_new_design__Rvyv_\"]").
-                            select("a[href]").attr("href");
-                    Integer km = Integer.parseInt(article.attr("data-mileage"));
-                    Integer anno = Integer.parseInt(article.attr("data-first-registration").split("-")[1]);   //va sistemato a solo anno
+                    try {
+                        String query = "INSERT INTO ANNUNCI (marca, modello, prezzo, link, km, anno, provincia, carburante, cambio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                        PreparedStatement statement = connection.prepareStatement(query);
 
-                    String provincia = article.attr("");    //DA SISTEMARE
-                    String carburante = article.select("span[data-testid=\"VehicleDetails-gas_pump\"]").text().toLowerCase();
-                    String cambio = article.select("span[data-testid=\"VehicleDetails-transmission\"]").text().toLowerCase();
-                    System.out.println(marca + " " + modello + " " + prezzo + " " + link + " " + km + " " + anno + " " + provincia + " " + carburante + " " + cambio); //DEBUG
+                        statement.setString(1, article.attr("data-make").toLowerCase());
+                        statement.setString(2, article.attr("data-model").toLowerCase());
+                        statement.setInt(3, Integer.parseInt(article.attr("data-price")));
+                        statement.setString(4, "autoscout24.it" +
+                                        article.select("div[class=\"ListItem_header__J6xlG ListItem_header_new_design__Rvyv_\"]").
+                                        select("a[href]").attr("href"));
+                        statement.setInt(5, Integer.parseInt(article.attr("data-mileage")));
+                        statement.setInt(6, Integer.parseInt(article.attr("data-first-registration").split("-")[1]));
+                        statement.setString(7, article.attr(""));   //DA SISTEMARE
+                        statement.setString(8, article.select("span[data-testid=\"VehicleDetails-gas_pump\"]").text().toLowerCase());
+                        statement.setString(9, article.select("span[data-testid=\"VehicleDetails-transmission\"]").text().toLowerCase());
+
+                        if (statement.executeUpdate() < 1)  System.err.println("No rows were inserted");
+
+                    } catch(SQLIntegrityConstraintViolationException e) {
+                        System.err.println("Constraint violation, not inserting");
+                    }
                 }
             }
         } catch (Exception e) {
-            System.out.println(e.toString());
+            e.printStackTrace();
         }
     }
 

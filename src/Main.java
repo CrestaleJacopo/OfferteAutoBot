@@ -26,7 +26,7 @@ public class Main
     {
         try {
 //            botInit();
-            String urlDatabase = "jdbc:mysql://localhost:3306/";
+            String urlDatabase = "jdbc:mysql://localhost/offerteautodb";
             WebScraperDB scraperDB = new WebScraperDB(urlDatabase);
             scraperDB.autoscout();
 //        } catch (BotException e) {

@@ -9,7 +9,9 @@ CREATE TABLE PROVINCE (
     sigla CHAR(2) NOT NULL,
     nome VARCHAR(100) NOT NULL,
     regione VARCHAR(100) NOT NULL,
-    posizione POINT NOT NULL,
+    lat FLOAT NON NUlL,
+    lon FLOAT NON NUlL,
+    cap CHAR(2) NOT NULL,
 	PRIMARY KEY(sigla)
 );
 

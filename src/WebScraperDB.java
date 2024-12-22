@@ -15,6 +15,12 @@ public class WebScraperDB
     public WebScraperDB(String db_url) throws SQLException{
         try {
             connection = DriverManager.getConnection(db_url, "root", "");
+            ZIP_TO_PROVINCE = new HashMap<String, String>();
+            Statement statement = connection.createStatement();
+            ResultSet rs = statement.executeQuery("SELECT sigla, cap from PROVINCE");
+            while(rs.next()) {
+                ZIP_TO_PROVINCE.put(rs.getString("sigla"), rs.getString("cap"));
+            }
         } catch (SQLException e) {
             throw new SQLException();
         }

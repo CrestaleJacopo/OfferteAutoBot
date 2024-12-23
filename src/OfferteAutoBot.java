@@ -65,6 +65,23 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         return rows;
     }
 
+    private void displayHelp(Update update) {
+        //PREPARING MESSAGE
+        Long chatId = update.getMessage().getChatId();
+        String replyText = "/start è il comando per iniziare a interagire con il bot\n" +
+                "/restart va usato una volta finita una richiesta al bot per tornare al menù principale\n" +
+                "Cerca auto permette di cercare in base ai criteri: marca, modello, carburante, cambio e ordinare in base a prezzo, km, o il rapporto tra prezzo e km\n" +
+                "Report auto fornisce delle statistiche su un modello: numero annunci, media e range di prezzo, km e anno, il numero di annunci per ogni carburante e per ogni tipo di cambio";
+        SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).build();
+
+        //SENDING MESSAGE
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            System.err.println("telegram error in displayMenu");
+        }
+    }
+
     private void displayMenu(Update update) {
         //PREPARING BUTTONS
         List<InlineKeyboardRow> rows = new ArrayList<>();
@@ -360,10 +377,13 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
             String msgText = update.getMessage().getText();
 
             if(msgText.equals("/start")) {
+                resetData();    //per sicurezza
                 displayMenu(update);
             } else if(msgText.equals("/restart")) {
                 resetData();
                 displayMenu(update);
+            } else if(msgText.equals("/help")) {
+                displayHelp(update);
             }
 
         } else if(update.hasCallbackQuery()) {

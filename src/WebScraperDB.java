@@ -60,7 +60,7 @@ public class WebScraperDB
                 }
             }
 
-            for(var brand: brands) {
+            for(var brand : brands) {
                 System.err.println("Searching in " + url + "/" + brand);
                 for(int i = 1; i < PAGE_LIMIT; i++) {
                     Document doc = Jsoup.connect(url + "/" + brand + queryParams + i).get();

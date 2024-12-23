@@ -24,6 +24,7 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
     private final List<String> transmissions = new ArrayList<>();
     private final List<String> orderOptions = new ArrayList<>();
     private final List<String> results = new ArrayList<>();
+    private String queryType = "";
 
     public OfferteAutoBot(String dbUrl) {
         try {
@@ -71,6 +72,12 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         tmp.setCallbackData("cerca_auto");
         r1.add(tmp);
         rows.add(r1);
+
+        var r2 = new InlineKeyboardRow();
+        tmp = new InlineKeyboardButton("Report auto\uD83D\uDCC8");
+        tmp.setCallbackData("report_auto");
+        r2.add(tmp);
+        rows.add(r2);
 
         //PREPARING MESSAGE
         Long chatId = update.getMessage().getChatId();
@@ -209,7 +216,7 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         }
     }
 
-    private void displayResults(Update update) {
+    private void displaySearchResults(Update update) {
         List<String> replies = new ArrayList<String>();
         try {
             String sql = "SELECT DISTINCT * FROM annunci WHERE marca = ? AND modello = ? AND carburante = ? AND cambio = ? ORDER BY "+choices.get("ordinamento")+";";
@@ -251,6 +258,93 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         }
     }
 
+    private void displayReportResults(Update update) {
+        String reply = "Report per " + choices.get("marca") + " " + choices.get("modello") + ":\n\n";
+        List<String> results = new ArrayList<String>();
+        try {
+            Statement statement = connection.createStatement();
+            ResultSet rs;
+            String where = " WHERE marca = \"" + choices.get("marca") + "\" AND modello = \"" + choices.get("modello") + "\" ";
+            //numero annunci
+            rs = statement.executeQuery("SELECT COUNT(*) FROM annunci " + where + ";");
+            if (rs.next()) { reply += "Numero annunci: " + rs.getInt(1) + "\n\n"; }
+
+            //prezzo medio e range prezzo(min-max)
+            rs = statement.executeQuery("SELECT AVG(prezzo), MIN(prezzo), MAX(prezzo) FROM annunci" + where + ";");
+            if (rs.next()) { reply += "Prezzo medio: " + rs.getInt(1) + "€\n" + "Range prezzo: " +
+                    rs.getInt(2) + "€ - " + rs.getInt(3) + "€\n\n"; }
+
+            //km medi e range km(min-max)
+            rs = statement.executeQuery("SELECT AVG(km), MIN(km), MAX(km) FROM annunci" + where + ";");
+            if (rs.next()) { reply += "Km medi: " + rs.getInt(1) + "km\n" + "Range km: " +
+                    rs.getInt(2) + "km - " + rs.getInt(3) + "km\n\n"; }
+
+
+            //anno medio e range anno (min-max)
+            rs = statement.executeQuery("SELECT AVG(anno), MIN(anno), MAX(anno) FROM annunci" + where + ";");
+            if (rs.next()) { reply += "Anno medio: " + rs.getInt(1) + "\n" + "Range anni: " +
+                    rs.getInt(2) + " - " + rs.getInt(3) + "\n"; }
+
+            //numero per tipi carburante
+            reply += "\nAnnunci per tipo di carburante:\n";
+            rs = statement.executeQuery("SELECT carburante, COUNT(*) FROM annunci " + where + " GROUP BY carburante;");
+            while(rs.next()) {
+                reply += rs.getString(1) + " " + rs.getInt(2) + "\n";
+            }
+
+
+            //numero per tipi cambio
+            reply += "\nAnnunci per tipo di cambio:\n";
+            rs = statement.executeQuery("SELECT cambio, COUNT(*) FROM annunci " + where + " GROUP BY cambio;");
+            while(rs.next()) {
+                reply += rs.getString(1) + " " + rs.getInt(2) + "\n";
+            }
+
+        } catch(SQLException e) {
+          System.err.println("db error in displayReportResults");
+          e.printStackTrace();
+        }
+
+        Long chatId = update.getCallbackQuery().getMessage().getChatId();
+        SendMessage message = SendMessage.builder().chatId(chatId).text(reply).build();
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            System.err.println("telegram error in displayReportResults");
+            e.printStackTrace();
+        }
+    }
+    private void handleSearch(Update update) {
+        String callbackData = update.getCallbackQuery().getData();
+        if(carBrands.contains(callbackData) && choices.get("marca")==null) {
+            choices.put("marca", callbackData);
+            displayModels(update);
+        } else if(models.contains(callbackData) && choices.get("modello")==null) {
+            choices.put("modello", callbackData);
+            displayFuels(update);
+        } else if(fuels.contains(callbackData) && choices.get("carburante")==null) {
+            choices.put("carburante", callbackData);
+            displayTransmissions(update);
+        } else if(transmissions.contains(callbackData) && choices.get("cambio")==null) {
+            choices.put("cambio", callbackData);
+            displayOrders(update);
+        } else if(orderOptions.contains(callbackData) && choices.get("ordinamento")==null) {
+            choices.put("ordinamento", callbackData);
+            displaySearchResults(update);
+        }
+    }
+
+    private void handleReport(Update update) {
+        String callbackData = update.getCallbackQuery().getData();
+        if(carBrands.contains(callbackData) && choices.get("marca")==null) {
+            choices.put("marca", callbackData);
+            displayModels(update);
+        } else if(models.contains(callbackData) && choices.get("modello")==null) {
+            choices.put("modello", callbackData);
+            displayReportResults(update);
+        }
+    }
+
     @Override
     public void consume(Update update)
     {
@@ -262,22 +356,15 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
             String callbackData = update.getCallbackQuery().getData();
             if(callbackData.equals("cerca_auto")) {
                 displayCarBrands(update);
-            } else if(carBrands.contains(callbackData) && choices.get("marca")==null) {
-                choices.put("marca", callbackData);
-                displayModels(update);
-            } else if(models.contains(callbackData) && choices.get("modello")==null) {
-                choices.put("modello", callbackData);
-                displayFuels(update);
-            } else if(fuels.contains(callbackData) && choices.get("carburante")==null) {
-                choices.put("carburante", callbackData);
-                displayTransmissions(update);
-            } else if(transmissions.contains(callbackData) && choices.get("cambio")==null) {
-                choices.put("cambio", callbackData);
-                displayOrders(update);
-            } else if(orderOptions.contains(callbackData) && choices.get("ordinamento")==null) {
-                choices.put("ordinamento", callbackData);
-                displayResults(update);
+                queryType = "search";
+            } else if(callbackData.equals("report_auto")) {
+                displayCarBrands(update);
+                queryType = "report";
             }
+
+            if(queryType.equals("search")) handleSearch(update);
+            else if(queryType.equals("report")) handleReport(update);
+
         }
     }
 }

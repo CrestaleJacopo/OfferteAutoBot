@@ -23,6 +23,7 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
     private final List<String> fuels = new ArrayList<>();
     private final List<String> transmissions = new ArrayList<>();
     private final List<String> orderOptions = new ArrayList<>();
+    private final List<String> results = new ArrayList<>();
 
     public OfferteAutoBot(String dbUrl) {
         try {
@@ -50,6 +51,7 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         int buttons = 0;
         var row = new InlineKeyboardRow();
         for(int i = 0; i<lst.size(); i++) {
+            buttons++;
             var btn = new InlineKeyboardButton(lst.get(i));
             btn.setCallbackData(lst.get(i));
             row.add(btn);
@@ -57,7 +59,6 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
                 rows.add(row);
                 row = new InlineKeyboardRow();
             }
-            buttons++;
         }
         return rows;
     }
@@ -66,7 +67,7 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         //PREPARING BUTTONS
         List<InlineKeyboardRow> rows = new ArrayList<>();
         var r1 = new InlineKeyboardRow();
-        var tmp = new InlineKeyboardButton("Cerca auto");
+        var tmp = new InlineKeyboardButton("Cerca auto\uD83D\uDD0E");
         tmp.setCallbackData("cerca_auto");
         r1.add(tmp);
         rows.add(r1);
@@ -158,10 +159,11 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).replyMarkup(new InlineKeyboardMarkup(prepareButtons(fuels))).build();
 
         //SENDING MESSAGE
+
         try {
             telegramClient.execute(message);
         } catch (TelegramApiException e) {
-            System.err.println("telegram error in displayModels");
+            System.err.println("telegram error in displayFuels");
         }
     }
 
@@ -208,7 +210,45 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void displayResults(Update update) {
+        List<String> replies = new ArrayList<String>();
+        try {
+            String sql = "SELECT DISTINCT * FROM annunci WHERE marca = ? AND modello = ? AND carburante = ? AND cambio = ? ORDER BY "+choices.get("ordinamento")+";";
 
+            PreparedStatement statement = connection.prepareStatement(sql);
+            statement.setString(1, choices.get("marca"));
+            statement.setString(2, choices.get("modello"));
+            statement.setString(3, choices.get("carburante"));
+            statement.setString(4, choices.get("cambio"));
+
+            ResultSet rs = statement.executeQuery();
+            int size = 0;
+            while(rs.next()) {
+                replies.add("km: " +rs.getString("km") +
+                        "\nanno: " + rs.getInt("anno")+
+                        "\nposizione: " + rs.getString("provincia") + " \n" +
+                        "<a href=\""+rs.getString("link")+"\">Visita il sito \uD83D\uDD17</a>");
+                size++;
+            }
+            String summary = "La tua ricerca:\n" + choices.get("marca") + " " + choices.get("modello") + " " +
+                    choices.get("carburante") + " " + choices.get("cambio") + "\n" + "La ricerca ha prodotto " +
+                    size + ((size==1)?" risultato":" risultati");
+            replies.addFirst(summary);
+        } catch(Exception e) {
+            System.err.println("db error in displayResults");
+            e.printStackTrace();
+        }
+
+        //SENDING MESSAGES
+        Long chatId = update.getCallbackQuery().getMessage().getChatId();
+        for(var reply : replies) {
+            SendMessage message = SendMessage.builder().chatId(chatId).text(reply).build();
+            message.setParseMode("HTML");
+            try {
+                telegramClient.execute(message);
+            } catch (TelegramApiException e) {
+                System.err.println("telegram error in displayMenu");
+            }
+        }
     }
 
     @Override

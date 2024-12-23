@@ -16,9 +16,9 @@ public class Main
             TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication();
             botsApplication.registerBot(botToken, new OfferteAutoBot(urlDatabase));
         } catch (TelegramApiException e) {
-            System.out.println("Telegram API Error");
+            System.err.println("Telegram API Error");
         } catch(FileNotFoundException e) {
-            System.out.println("Couldn't find bot token");
+            System.err.println("Couldn't find bot token");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -28,7 +28,7 @@ public class Main
     {
         try {
             WebScraperDB scraperDB = new WebScraperDB(urlDatabase);
-            scraperDB.autoscout();
+            scraperDB.scrape();
             botInit();
         } catch (BotException e) {
             System.out.println("Couldn't initialise bot");

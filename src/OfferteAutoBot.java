@@ -72,6 +72,8 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         Long chatId = update.getMessage().getChatId();
         String replyText = "/start è il comando per iniziare a interagire con il bot\n" +
                 "/restart va usato una volta finita una richiesta al bot per tornare al menù principale\n" +
+                "/save <id> serve per salvare un annuncio inserendo il suo id\n" +
+                "/mysaves restituisce gli articoli salvati con il proprio utente\n" +
                 "Cerca auto permette di cercare in base ai criteri: marca, modello, carburante, cambio e ordinare in base a prezzo, km, o il rapporto tra prezzo e km\n" +
                 "Report auto fornisce delle statistiche su un modello: numero annunci, media e range di prezzo, km e anno, il numero di annunci per ogni carburante e per ogni tipo di cambio";
         SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).build();

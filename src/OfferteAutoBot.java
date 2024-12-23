@@ -391,6 +391,30 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
             statement.execute();
         } catch (Exception e) {
             System.err.println("db error in saveAnnouncement");
+        }
+    }
+
+    private void showSaved(Message message) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("SELECT * FROM ANNUNCI INNER JOIN SALVATI ON ANNUNCI.id = SALVATI.id_annuncio WHERE id_utente = ? ;");
+            statement.setLong(1, message.getFrom().getId());
+            ResultSet rs = statement.executeQuery();
+
+            ArrayList<String> replies = new ArrayList<String>();
+            while(rs.next()) {
+                String marca = rs.getString("marca");
+                String modello = rs.getString("modello");
+                replies.add("<a href=\""+rs.getString("link")+"\"> "+ marca + " " + modello + "\uD83D\uDD17</a>");
+            }
+
+            Long chatId = message.getChatId();
+            for(var reply : replies) {
+                var response = SendMessage.builder().chatId(chatId).text(reply).build();
+                response.setParseMode("HTML");
+                telegramClient.execute(response);
+            }
+        } catch (Exception e) {
+            System.err.println("db error in showSaved");
             e.printStackTrace();
         }
     }
@@ -422,6 +446,8 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
                 displayHelp(update);
             } else if(msgText.startsWith("/save")) {
                 saveAnnouncement(update);
+            } else if(msgText.startsWith("/mysaves")) {
+                showSaved(update.getMessage());
             }
         } else if(update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();

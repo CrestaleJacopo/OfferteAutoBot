@@ -2,6 +2,7 @@ import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
@@ -11,6 +12,7 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
@@ -247,7 +249,8 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
             ResultSet rs = statement.executeQuery();
             int size = 0;
             while(rs.next()) {
-                replies.add("km: " +rs.getString("km") +
+                replies.add("id:"+ rs.getString("id") + "\n"+
+                        "km: " +rs.getString("km") +
                         "\nanno: " + rs.getInt("anno")+
                         "\nposizione: " + rs.getString("provincia") + " \n" +
                         "<a href=\""+rs.getString("link")+"\">Visita il sito \uD83D\uDD17</a>");
@@ -360,6 +363,38 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         }
     }
 
+    private void registerUser(Message message) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("INSERT INTO UTENTI(id, username, first_access) VALUES (?, ?, ?);");
+            Long userId = message.getFrom().getId();
+            statement.setLong(1, userId);
+
+            String username = message.getFrom().getUserName();
+            statement.setString(2, username);
+
+            statement.setTimestamp(3, Timestamp.valueOf(LocalDateTime.now()));
+
+            statement.execute();
+        } catch(SQLIntegrityConstraintViolationException e) {
+            System.err.println("constraint violation in registerUser, not inserting");
+        } catch (Exception e) {
+            System.err.println("db error in registerUser");
+        }
+    }
+
+    private void saveAnnouncement(Update update) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("INSERT INTO SALVATI(id_utente, id_annuncio) VALUES (?, ?);");
+            statement.setLong(1, update.getMessage().getFrom().getId());
+            String msgText = update.getMessage().getText();
+            statement.setInt(2, Integer.parseInt(msgText.split(" ")[1]));
+            statement.execute();
+        } catch (Exception e) {
+            System.err.println("db error in saveAnnouncement");
+            e.printStackTrace();
+        }
+    }
+
     private void resetData() {
         queryType = "";
         choices.clear();
@@ -374,8 +409,9 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
     public void consume(Update update)
     {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            String msgText = update.getMessage().getText();
+            registerUser(update.getMessage());
 
+            String msgText = update.getMessage().getText();
             if(msgText.equals("/start")) {
                 resetData();    //per sicurezza
                 displayMenu(update);
@@ -384,8 +420,9 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
                 displayMenu(update);
             } else if(msgText.equals("/help")) {
                 displayHelp(update);
+            } else if(msgText.startsWith("/save")) {
+                saveAnnouncement(update);
             }
-
         } else if(update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();
             if(callbackData.equals("cerca_auto")) {

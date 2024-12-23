@@ -1,6 +1,6 @@
 CREATE TABLE UTENTI (
-    id INT NOT NULL AUTO_INCREMENT,
-    username VARCHAR(50) NOT NULL UNIQUE,
+    id LONG NOT NULL AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE,
     first_access DATETIME NOT NULL,
 	PRIMARY KEY(id)
 );
@@ -31,7 +31,7 @@ CREATE TABLE ANNUNCI (
 );
 
 CREATE TABLE SALVATI (
-    id_utente INT NOT NULL,
+    id_utente LONG NOT NULL,
     id_annuncio INT NOT NULL,
     PRIMARY KEY (id_utente, id_annuncio),
     FOREIGN KEY (id_utente) REFERENCES UTENTI(id) ON UPDATE CASCADE ON DELETE CASCADE,

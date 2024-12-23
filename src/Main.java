@@ -2,7 +2,6 @@ import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.sql.SQLException;
 import java.util.Scanner;
 
 public class Main

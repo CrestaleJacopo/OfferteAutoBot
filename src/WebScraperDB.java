@@ -4,7 +4,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 import java.sql.*;
-
 import java.util.*;
 
 public class WebScraperDB

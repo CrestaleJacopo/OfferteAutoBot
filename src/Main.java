@@ -27,14 +27,13 @@ public class Main
     public static void main(String[] args)
     {
         try {
-//            WebScraperDB scraperDB = new WebScraperDB(urlDatabase);
-//            scraperDB.autoscout();
+            WebScraperDB scraperDB = new WebScraperDB(urlDatabase);
+            scraperDB.autoscout();
             botInit();
         } catch (BotException e) {
             System.out.println("Couldn't initialise bot");
-            return;
-        } //catch (SQLException e) {
-//            System.out.println("Couldn't connect to db");
-//        }
+        } catch (SQLException e) {
+            System.out.println("Couldn't connect to db");
+        }
     }
 }

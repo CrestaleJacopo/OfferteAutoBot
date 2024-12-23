@@ -20,7 +20,7 @@ public class WebScraperDB
             Statement statement = connection.createStatement();
             ResultSet rs = statement.executeQuery("SELECT sigla, cap from PROVINCE");
             while(rs.next()) {
-                ZIP_TO_PROVINCE.put(rs.getString("sigla"), rs.getString("cap"));
+                ZIP_TO_PROVINCE.put(rs.getString("cap"), rs.getString("sigla"));
             }
         } catch (SQLException e) {
             throw new SQLException();
@@ -51,7 +51,11 @@ public class WebScraperDB
                                         select("a[href]").attr("href"));
                         statement.setInt(5, Integer.parseInt(article.attr("data-mileage")));
                         statement.setInt(6, Integer.parseInt(article.attr("data-first-registration").split("-")[1]));
-                        statement.setString(7, article.attr(""));   //DA SISTEMARE
+
+                        var siglaProvincia = ZIP_TO_PROVINCE.get(article.attr("data-listing-zip-code").strip().substring(0, 2));
+                        if(siglaProvincia == null) break;
+                        statement.setString(7, siglaProvincia.toUpperCase());
+
                         statement.setString(8, article.select("span[data-testid=\"VehicleDetails-gas_pump\"]").text().toLowerCase());
                         statement.setString(9, article.select("span[data-testid=\"VehicleDetails-transmission\"]").text().toLowerCase());
 

@@ -16,15 +16,16 @@ import java.util.*;
 public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
     private TelegramClient telegramClient;
     private Connection connection;
+
+    private String queryType = "";
     private final HashMap<String, String> choices = new HashMap<String, String>();
 
     private final List<String> carBrands = new ArrayList<>();
-    private List<String> models = new ArrayList<>();
+    private final List<String> models = new ArrayList<>();
     private final List<String> fuels = new ArrayList<>();
     private final List<String> transmissions = new ArrayList<>();
     private final List<String> orderOptions = new ArrayList<>();
     private final List<String> results = new ArrayList<>();
-    private String queryType = "";
 
     public OfferteAutoBot(String dbUrl) {
         try {
@@ -120,7 +121,6 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
 
     private void displayModels(Update update) {
         //RETRIEVING MODELS
-        models = new ArrayList<>();
         try {
             Statement statement = connection.createStatement();
             ResultSet rs = statement.executeQuery("SELECT DISTINCT modello FROM annunci WHERE marca =\""+choices.get("marca")+"\";");
@@ -242,7 +242,6 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
             replies.addFirst(summary);
         } catch(Exception e) {
             System.err.println("db error in displayResults");
-            e.printStackTrace();
         }
 
         //SENDING MESSAGES
@@ -302,7 +301,6 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
 
         } catch(SQLException e) {
           System.err.println("db error in displayReportResults");
-          e.printStackTrace();
         }
 
         Long chatId = update.getCallbackQuery().getMessage().getChatId();
@@ -311,9 +309,9 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
             telegramClient.execute(message);
         } catch (TelegramApiException e) {
             System.err.println("telegram error in displayReportResults");
-            e.printStackTrace();
         }
     }
+
     private void handleSearch(Update update) {
         String callbackData = update.getCallbackQuery().getData();
         if(carBrands.contains(callbackData) && choices.get("marca")==null) {
@@ -345,13 +343,29 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         }
     }
 
+    private void resetData() {
+        queryType = "";
+        choices.clear();
+        carBrands.clear();
+        models.clear();
+        fuels.clear();
+        transmissions.clear();
+        results.clear();
+    }
+
     @Override
     public void consume(Update update)
     {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            if(update.getMessage().getText().equals("/start")) {
+            String msgText = update.getMessage().getText();
+
+            if(msgText.equals("/start")) {
+                displayMenu(update);
+            } else if(msgText.equals("/restart")) {
+                resetData();
                 displayMenu(update);
             }
+
         } else if(update.hasCallbackQuery()) {
             String callbackData = update.getCallbackQuery().getData();
             if(callbackData.equals("cerca_auto")) {

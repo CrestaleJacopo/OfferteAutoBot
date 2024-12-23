@@ -5,12 +5,13 @@ import org.jsoup.select.Elements;
 import java.sql.*;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class WebScraperDB
 {
-    private static int PAGE_LIMIT = 25; //max pages scraped for each site
-    private static HashMap<String, String> ZIP_TO_PROVINCE;     //TODO: convert zip code to province name
-    private Connection connection;
+    private final static int PAGE_LIMIT = 25; //max pages scraped for each site
+    private static  HashMap<String, String> ZIP_TO_PROVINCE;     //TODO: convert zip code to province name
+    private final Connection connection;
 
     public WebScraperDB(String db_url) throws SQLException{
         try {

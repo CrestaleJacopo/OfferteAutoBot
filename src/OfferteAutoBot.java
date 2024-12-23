@@ -1,14 +1,10 @@
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
-import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -16,15 +12,17 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.sql.*;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 
 public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
     private TelegramClient telegramClient;
     private Connection connection;
     private final HashMap<String, String> choices = new HashMap<String, String>();
 
-    private List<String> carBrands = new ArrayList<>();
+    private final List<String> carBrands = new ArrayList<>();
     private List<String> models = new ArrayList<>();
+    private final List<String> fuels = new ArrayList<>();
+    private final List<String> transmissions = new ArrayList<>();
+    private final List<String> orderOptions = new ArrayList<>();
 
     public OfferteAutoBot(String dbUrl) {
         try {
@@ -39,6 +37,29 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         } catch(Exception e) {
             System.err.println("Bot creation error");
         }
+
+        //INIT FILTERS
+        orderOptions.add("prezzo");
+        orderOptions.add("km");
+        orderOptions.add("prezzo/km");
+    }
+
+    private List<InlineKeyboardRow> prepareButtons(List<String> lst) {
+        //PREPARING BUTTONS
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+        int buttons = 0;
+        var row = new InlineKeyboardRow();
+        for(int i = 0; i<lst.size(); i++) {
+            var btn = new InlineKeyboardButton(lst.get(i));
+            btn.setCallbackData(lst.get(i));
+            row.add(btn);
+            if((buttons%4 == 0 && buttons!=0) || i==lst.size()-1) {
+                rows.add(row);
+                row = new InlineKeyboardRow();
+            }
+            buttons++;
+        }
+        return rows;
     }
 
     private void displayMenu(Update update) {
@@ -59,7 +80,7 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         try {
             telegramClient.execute(message);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            System.err.println("telegram error in displayMenu");
         }
     }
 
@@ -72,35 +93,20 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
                 carBrands.add(rs.getString("marca"));
             }
         } catch(Exception e) {
-            e.printStackTrace();
+            System.err.println("db error in displayCarBrands");
         }
         Collections.sort(carBrands);
-
-        //PREPARING BUTTONS
-        List<InlineKeyboardRow> rows = new ArrayList<>();
-        int buttons = 0;
-        var row = new InlineKeyboardRow();
-        for(var brand : carBrands) {
-            if(buttons%4 == 0 && buttons!=0) {
-                rows.add(row);
-                row = new InlineKeyboardRow();
-            }
-            var btn = new InlineKeyboardButton(brand);
-            btn.setCallbackData(brand);
-            row.add(btn);
-            buttons++;
-        }
 
         //PREPARING MESSAGE
         Long chatId = update.getCallbackQuery().getMessage().getChatId();
         String replyText = "Seleziona il marchio:";
-        SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).replyMarkup(new InlineKeyboardMarkup(rows)).build();
+        SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).replyMarkup(new InlineKeyboardMarkup(prepareButtons(carBrands))).build();
 
         //SENDING MESSAGE
         try {
             telegramClient.execute(message);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            System.err.println("telegram error in displayCarBrands");
         }
     }
 
@@ -109,41 +115,100 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
         models = new ArrayList<>();
         try {
             Statement statement = connection.createStatement();
-            ResultSet rs = statement.executeQuery("SELECT DISTINCT modello FROM annunci WHERE marca =\""+choices.get("brand")+"\";");
+            ResultSet rs = statement.executeQuery("SELECT DISTINCT modello FROM annunci WHERE marca =\""+choices.get("marca")+"\";");
             while(rs.next()) {
                 models.add(rs.getString("modello"));
             }
         } catch(Exception e) {
-            e.printStackTrace();
+            System.err.println("db error in displayModels");
         }
         Collections.sort(models);
 
-        //PREPARING BUTTONS
-        List<InlineKeyboardRow> rows = new ArrayList<>();
-        int buttons = 0;
-        var row = new InlineKeyboardRow();
-        for(int i = 0; i<models.size(); i++) {
-            if((buttons%4 == 0 && buttons!=0) || i==models.size()-1) {
-                rows.add(row);
-                row = new InlineKeyboardRow();
-            }
-            var btn = new InlineKeyboardButton(models.get(i));
-            btn.setCallbackData(models.get(i));
-            row.add(btn);
-            buttons++;
-        }
-
         //PREPARING MESSAGE
         Long chatId = update.getCallbackQuery().getMessage().getChatId();
-        String replyText = "Seleziona il modello di "+choices.get("brand")+":";
-        SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).replyMarkup(new InlineKeyboardMarkup(rows)).build();
+        String replyText = "Seleziona il modello di "+choices.get("marca")+":";
+        SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).replyMarkup(new InlineKeyboardMarkup(prepareButtons(models))).build();
 
         //SENDING MESSAGE
         try {
             telegramClient.execute(message);
         } catch (TelegramApiException e) {
-            e.printStackTrace();
+            System.err.println("telegram error in displayModels");
         }
+    }
+
+    private void displayFuels(Update update) {
+        //RETRIEVING
+        try {
+            PreparedStatement statement = connection.prepareStatement("SELECT DISTINCT carburante FROM annunci WHERE marca = ? AND modello = ?;");
+            statement.setString(1, choices.get("marca"));
+            statement.setString(2, choices.get("modello"));
+            ResultSet rs = statement.executeQuery();
+            while(rs.next()) {
+                fuels.add(rs.getString("carburante"));
+            }
+        } catch(Exception e) {
+            System.err.println("db error in displayFuels");
+        }
+        Collections.sort(fuels);
+
+        //PREPARING MESSAGE
+        Long chatId = update.getCallbackQuery().getMessage().getChatId();
+        String replyText = "Seleziona il carburante:";
+        SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).replyMarkup(new InlineKeyboardMarkup(prepareButtons(fuels))).build();
+
+        //SENDING MESSAGE
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            System.err.println("telegram error in displayModels");
+        }
+    }
+
+    private void displayTransmissions(Update update) {
+        //RETRIEVING
+        try {
+            PreparedStatement statement = connection.prepareStatement("SELECT DISTINCT cambio FROM annunci WHERE marca = ? AND modello = ? AND carburante = ?;");
+            statement.setString(1, choices.get("marca"));
+            statement.setString(2, choices.get("modello"));
+            statement.setString(3, choices.get("carburante"));
+            ResultSet rs = statement.executeQuery();
+            while(rs.next()) {
+                transmissions.add(rs.getString("cambio"));
+            }
+        } catch(Exception e) {
+            System.err.println("db error in displayTransmissions");
+        }
+        Collections.sort(transmissions);
+
+        //PREPARING MESSAGE
+        Long chatId = update.getCallbackQuery().getMessage().getChatId();
+        String replyText = "Seleziona il tipo di cambio:";
+        SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).replyMarkup(new InlineKeyboardMarkup(prepareButtons(transmissions))).build();
+
+        //SENDING MESSAGE
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            System.err.println("telegram error in displayTransmissions");
+        }
+    }
+
+    private void displayOrders(Update update) {
+        //PREPARING MESSAGE
+        Long chatId = update.getCallbackQuery().getMessage().getChatId();
+        String replyText = "Selezione l'ordinamento:";
+        SendMessage message = SendMessage.builder().chatId(chatId).text(replyText).replyMarkup(new InlineKeyboardMarkup(prepareButtons(orderOptions))).build();
+
+        try {
+            telegramClient.execute(message);
+        } catch (TelegramApiException e) {
+            System.err.println("telegram error in displayFilters");
+        }
+    }
+
+    private void displayResults(Update update) {
+
     }
 
     @Override
@@ -157,13 +222,22 @@ public class OfferteAutoBot implements LongPollingSingleThreadUpdateConsumer {
             String callbackData = update.getCallbackQuery().getData();
             if(callbackData.equals("cerca_auto")) {
                 displayCarBrands(update);
-            } else if(carBrands.contains(callbackData)) {
-                choices.put("brand", callbackData);
+            } else if(carBrands.contains(callbackData) && choices.get("marca")==null) {
+                choices.put("marca", callbackData);
                 displayModels(update);
-            } else if(models.contains(callbackData)) {
-                choices.put("model", callbackData);
+            } else if(models.contains(callbackData) && choices.get("modello")==null) {
+                choices.put("modello", callbackData);
+                displayFuels(update);
+            } else if(fuels.contains(callbackData) && choices.get("carburante")==null) {
+                choices.put("carburante", callbackData);
+                displayTransmissions(update);
+            } else if(transmissions.contains(callbackData) && choices.get("cambio")==null) {
+                choices.put("cambio", callbackData);
+                displayOrders(update);
+            } else if(orderOptions.contains(callbackData) && choices.get("ordinamento")==null) {
+                choices.put("ordinamento", callbackData);
+                displayResults(update);
             }
-
         }
     }
 }
